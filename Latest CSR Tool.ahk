@@ -53,6 +53,8 @@ if (LatestVersion != version)
     
     IfMsgBox, Yes
     {
+
+	FileDelete,%A_ScriptDir%/CSR Tool %latestversion%.ahk
 	UrlDownloadToFile, https://github.com/ILoveYouBev/workplaceUI/raw/refs/heads/main/Latest`%20CSR`%20Tool.ahk, %A_ScriptDir%/CSR Tool %latestversion%.ahk
 	
 	MsgBox, 64, Update, Updated successfully!
