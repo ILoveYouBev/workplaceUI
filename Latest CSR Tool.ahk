@@ -6,7 +6,7 @@ SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.0
+global version:=2.9
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -56,7 +56,7 @@ if (LatestVersion != CurrentVersion)
 	UrlDownloadToFile, https://github.com/ILoveYouBev/workplaceUI/raw/refs/heads/main/Latest`%20CSR`%20Tool.ahk, %A_ScriptDir%/CSR Tool %latestversion%.ahk
 	
 	MsgBox, 64, Update, Updated successfully!
-	Run,%A_ScriptDir%/CSR Tool %latestversion%.ahk%
+	Run,%A_ScriptDir%/CSR Tool %latestversion%.ahk
 	ExitApp
     }
     else
