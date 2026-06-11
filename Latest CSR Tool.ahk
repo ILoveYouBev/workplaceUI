@@ -6,7 +6,7 @@ SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=2.9
+global version:=3.0
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -44,12 +44,12 @@ UrlDownloadToFile, https://raw.githubusercontent.com/ILoveYouBev/workplaceUI/ref
 FileRead, LatestVersion, %A_Temp%\version.txt
 FileDelete, %A_Temp%\version.txt
 
-if (LatestVersion != CurrentVersion)
+if (LatestVersion != version)
 {
     SetLoad(15, "New Update Available...")
 
     Gui, Loading: -AlwaysOnTop
-    MsgBox, 4, Update Available, A new update is available!`n`nCurrent: %CurrentVersion%`nLatest: %LatestVersion%`n`nDo you want to update?
+    MsgBox, 4, Update Available, A new update is available!`n`nCurrent: %version%`nLatest: %LatestVersion%`n`nDo you want to update?
     
     IfMsgBox, Yes
     {
