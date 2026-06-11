@@ -53,10 +53,10 @@ if (LatestVersion != CurrentVersion)
     
     IfMsgBox, Yes
     {
-	UrlDownloadToFile, https://github.com/ILoveYouBev/workplaceUI/raw/refs/heads/main/Latest`%20CSR`%20Tool.ahk, %A_ScriptDir%/CSR Tool.ahk
+	UrlDownloadToFile, https://github.com/ILoveYouBev/workplaceUI/raw/refs/heads/main/Latest`%20CSR`%20Tool.ahk, %A_ScriptDir%/CSR Tool %latestversion%.ahk
 	
 	MsgBox, 64, Update, Updated successfully!
-	Run,%A_ScriptDir%/CSR Tool.ahk
+	Run,%A_ScriptDir%/CSR Tool %latestversion%.ahk%
 	ExitApp
     }
     else
