@@ -6,7 +6,7 @@ SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.0
+global version:=3.1
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -372,42 +372,65 @@ return
 
 
 Contents(a){
-	Clipboard:=a
-	if InStr(a, "SHORT SHELF LIFE ITEM")
-	{
-xl := ComObjActive("Excel.Application")
+Clipboard:=a
+if InStr(a, "SHORT SHELF LIFE ITEM")
+{
+   xl := ComObjActive("Excel.Application")
 
-; force Excel out of edit mode (important)
-Send {Esc}
-Sleep, 100
+   ; force Excel out of edit mode (important)
+   Send {Esc}
+   Sleep, 100
+   cell := xl.ActiveCell
 
-cell := xl.ActiveCell
-
-; safety check
-if !cell
-    return
-
-oldValue := cell.Value
-newText := "`n" . a   ; text you want to add
-
-; write combined value back
-cell.Value := oldValue . newText
-
-; give Excel time to update internal text buffer
-Sleep, 50
-
-; calculate positions for formatting
-startPos := StrLen(oldValue) + 1
-len := StrLen(newText)
-
-; format ONLY new text
-charRange := cell.Characters(startPos, len)
-charRange.Font.ColorIndex := 3
-charRange.Font.Bold := True
-
-	}
-
+   ; safety check
+   if !cell
 	return
+
+   oldValue := cell.Value
+   newText := "`n" . a   ; text you want to add
+
+   if (oldValue = "")
+	newText := a
+   else
+	newText := "`n" . a
+
+   cell.Value := oldValue . newText
+
+   ; give Excel time to update internal text buffer
+   Sleep, 50
+
+   ; calculate positions for formatting
+   startPos := StrLen(oldValue) + 1
+   len := StrLen(newText)
+
+   ; format ONLY new text
+   charRange := cell.Characters(startPos, len)
+   charRange.Font.ColorIndex := 3
+   charRange.Font.Bold := True
+
+}else {
+   xl := ComObjActive("Excel.Application")
+   if WinActive("ahk_exe EXCEL.EXE")
+   {
+	Send {Esc} 
+	Sleep, 100 
+	cell := xl.ActiveCell 
+
+	; safety check 
+	if !cell 
+	   return 
+
+	cell.Value := a 
+	cell.Font.ColorIndex := 1 
+	cell.Font.Bold := True
+   }
+   else
+   {
+	SendInput % a
+   }
+}
+
+return
 }
 
 
