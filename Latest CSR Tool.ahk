@@ -6,7 +6,7 @@ SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.2
+global version:=3.3
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -1499,6 +1499,61 @@ WinSet,Transparent,%ToggleCount%,A
 return
 
 
+f10::
+try xl := ComObjActive("Excel.Application")
+catch
+{
+    MsgBox Excel is not open.
+    ExitApp
+}
+
+sheet := xl.ActiveSheet
+lastRow := sheet.Cells(sheet.Rows.Count, 1).End(-4162).Row
+
+; Find columns by header
+headers := {}
+
+Loop % sheet.UsedRange.Columns.Count
+{
+    header := Trim(sheet.Cells(1, A_Index).Value)
+    headers[header] := A_Index
+}
+
+productCol := headers["Product name"]
+onOrderCol := headers["On order"]
+unitCol := headers["Unit"]
+
+if (!productCol || !onOrderCol || !unitCol)
+{
+    MsgBox Required columns not found.
+    ExitApp
+}
+
+result := ""
+
+Loop % lastRow - 1
+{
+    row := A_Index + 1
+
+    onOrder := sheet.Cells(row, onOrderCol).Value
+
+    if (onOrder > 0)
+    {
+        qty := Round(onOrder)  ; removes decimals
+        product := Trim(sheet.Cells(row, productCol).Value)
+        unit := Trim(sheet.Cells(row, unitCol).Value)
+
+        result .= qty . unit . " - " . product . "`r`n"
+    }
+}
+
+Clipboard := RTrim(result, "`r`n")
+
+count := StrSplit(Clipboard, "`n").Length()
+
+MsgBox % "Copied " count " items to clipboard."
+
+return
 
 f11::
 global LPColumnIndex
