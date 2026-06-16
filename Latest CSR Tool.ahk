@@ -1,12 +1,13 @@
 #NoEnv
 #SingleInstance, Force
+#Include *i Personal Script.ahk
 SendMode, Input
 SetBatchLines, -1
 SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.3
+global version:=3.4
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
