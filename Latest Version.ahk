@@ -6,7 +6,7 @@ SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.0
+global version:=3.2
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -50,13 +50,13 @@ if (LatestVersion != version)
 
     Gui, Loading: -AlwaysOnTop
     MsgBox, 4, Update Available, A new update is available!`n`nCurrent: %version%`nLatest: %LatestVersion%`n`nDo you want to update?
-    
+
     IfMsgBox, Yes
     {
 
 	FileDelete,%A_ScriptDir%/CSR Tool %latestversion%.ahk
 	UrlDownloadToFile, https://github.com/ILoveYouBev/workplaceUI/raw/refs/heads/main/Latest`%20CSR`%20Tool.ahk, %A_ScriptDir%/CSR Tool %latestversion%.ahk
-	
+
 	MsgBox, 64, Update, Updated successfully!
 	Run,%A_ScriptDir%/CSR Tool %latestversion%.ahk
 	ExitApp
@@ -201,7 +201,7 @@ Loop {
 	if (Elapsed > 1000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,TLP_LPX1, TLP_LPY1,TLP_LPX2, TLP_LPY2,*10 TargetLp.PNG
+	ImageSearch,ImageX,ImageY,TLP_LPX1, TLP_LPY1,TLP_LPX2, TLP_LPY2,*10 Image Search/TargetLp.PNG
 	If !(ErrorLevel) {
 		X:=ImageX+TLP_LPOffSetX
 		Y:=ImageY+TLP_LPOffSetY
@@ -231,7 +231,7 @@ Return
 
 
 AutoApply:
-ImageSearch,ImageX,ImageY,AP_ABX1, AP_ABY1,AP_ABX2, AP_ABY2,*100 Apply.PNG
+ImageSearch,ImageX,ImageY,AP_ABX1, AP_ABY1,AP_ABX2, AP_ABY2,*100 Image Search/Apply.PNG
 if !(ErrorLevel){
     X:=ImageX+AP_ABOffSetX
     Y:=ImageY+AP_ABOffSetY
@@ -255,7 +255,7 @@ Loop {
 	if (Elapsed > 2000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,SP_ShortPickX1, SP_ShortPickY1,SP_ShortPickX2, SP_ShortPickY2,*10 Short Pick.PNG
+	ImageSearch,ImageX,ImageY,SP_ShortPickX1, SP_ShortPickY1,SP_ShortPickX2, SP_ShortPickY2,*10 Image Search/Short Pick.PNG
 	If !(ErrorLevel) {
 		x:=ImageX+SP_ShortPickOffSetX
 		y:=ImageY+SP_ShortPickOffSetY
@@ -274,7 +274,7 @@ Loop {
 	if (Elapsed > 2000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,SP_PickQtyX1, SP_PickQtyY1,SP_PickQtyX2, SP_PickQtyY2,*10 Pick Qty.PNG
+	ImageSearch,ImageX,ImageY,SP_PickQtyX1, SP_PickQtyY1,SP_PickQtyX2, SP_PickQtyY2,*10 Image Search/Pick Qty.PNG
 	If !(ErrorLevel) {
 		X:=ImageX+SP_PickQtyOffSetX
 		Y:=ImageY+SP_PickQtyOffSetY
@@ -303,14 +303,14 @@ Loop {
 	if (Elapsed > 1000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,LP_BatchX1, LP_BatchY1,LP_BatchX2, LP_BatchY2,*10 Batch Number.PNG
+	ImageSearch,ImageX,ImageY,LP_BatchX1, LP_BatchY1,LP_BatchX2, LP_BatchY2,*10 Image Search/Batch Number.PNG
 	If !(ErrorLevel) {
 		;tooltip, image not found
 		X:=ImageX+LP_BatchOffSetX
 		Y:=ImageY+LP_BatchOffSetY
 		MouseClick,Left,%X%,%Y%,2
 		break
-	}else 
+	}else
 	   ;msgbox, not found
 	if (stop){
 		msgbox, stopped
@@ -325,7 +325,7 @@ Loop {
 	if (Elapsed > 1000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,LP_LPX1, LP_LPY1,LP_LPX2, LP_LPY2,*10 LP.PNG
+	ImageSearch,ImageX,ImageY,LP_LPX1, LP_LPY1,LP_LPX2, LP_LPY2,*10 Image Search/LP.PNG
 	If !(ErrorLevel) {
 		X:=ImageX+LP_LPOffSetX
 		Y:=ImageY+LP_LPOffSetY
@@ -372,46 +372,81 @@ return
 
 
 Contents(a){
-Clipboard:=a
-if InStr(a, "SHORT SHELF LIFE ITEM")
+;Clipboard:=a
+if WinActive("ahk_exe EXCEL.EXE")
 {
-   xl := ComObjActive("Excel.Application")
+	xl := ComObjActive("Excel.Application")
 
-   ; force Excel out of edit mode (important)
-   Send {Esc}
-   Sleep, 100
-   cell := xl.ActiveCell
+	; force Excel out of edit mode (important)
+	Send {Esc}
+	if !WaitForExcelReady(xl)
+		return
+	cell := xl.ActiveCell
 
-   ; safety check
-   if !cell
-	return
+	oldValue := cell.Value
+	newText := "`n" . a   ; text you want to add
 
-   oldValue := cell.Value
-   newText := "`n" . a   ; text you want to add
+	if (oldValue = "")
+		newText := a
+	else
+		newText := "`n" . a
 
-   ; write combined value back
-   cell.Value := oldValue . newText
+	cell.Value := oldValue . newText
 
-   ; give Excel time to update internal text buffer
-   Sleep, 50
+	/*
+	Loop 100	; up to 1sec
+	{
+		try
+		{
+			if (cell.Value = newValue)
+				break
+		}
+		catch
+		{
+		}
 
-   ; calculate positions for formatting
-   startPos := StrLen(oldValue) + 1
-   len := StrLen(newText)
+		Sleep, 10
+	}
+	*/
+	sleep,50
 
-   ; format ONLY new text
-   charRange := cell.Characters(startPos, len)
-   charRange.Font.ColorIndex := 3
-   charRange.Font.Bold := True
+	Cell.Font.Bold := True
+	; calculate positions for formatting
+	startPos := StrLen(oldValue) + 1
+	len := StrLen(newText)
 
-}else {
-   send (a)
+	; format ONLY new text
+	charRange := cell.Characters(startPos, len)
+	if InStr(a, "SHORT SHELF LIFE ITEM")
+		charRange.Font.ColorIndex := 3
+
+}else{ ;if excel is not active
+	SendInput % a
 }
 
 return
 }
 
 
+WaitForExcelReady(xl, Timeout := 5000)
+{
+    Start := A_TickCount
+
+    while ((A_TickCount - Start) < Timeout)
+    {
+        try
+        {
+            if (xl.Ready)
+                return true
+        }
+        catch
+        {
+        }
+
+        Sleep, 10
+    }
+    return false
+}
 
 AutoSearchbatch:
 stop:=false
@@ -426,7 +461,7 @@ Loop {
 	if (Elapsed > 1000) {
 		return
 	}
-	ImageSearch,BatchX,BatchY,SB_BNX1, SB_BNY1,SB_BNX2, SB_BNY2,*10 Batch Number.PNG
+	ImageSearch,BatchX,BatchY,SB_BNX1, SB_BNY1,SB_BNX2, SB_BNY2,*10 Image Search/Batch Number.PNG
 	If !(ErrorLevel) {
 		X:=BatchX+SB_BNOffSetX
 		Y:=BatchY+SB_BNOffSetY
@@ -443,7 +478,7 @@ Loop {
 
 CoordMode,Pixel,Screen
 CoordMode,Mouse,Screen
-ImageSearch,ImageX,ImageY,SB_BFX1, SB_BFY1,SB_BFX2, SB_BFY2,*10 Batch Filter.PNG
+ImageSearch,ImageX,ImageY,SB_BFX1, SB_BFY1,SB_BFX2, SB_BFY2,*10 Image Search/Batch Filter.PNG
 if !(ErrorLevel) {
 	X:=ImageX+SB_BFOffSetX
 	Y:=ImageY+SB_BFOffSetY
@@ -619,7 +654,7 @@ LV_Add(,StringToReplace,StringReplacement)
 
 FileDelete,Hotstrings/%StringToReplace%.txt
 FileAppend,%StringReplacement%,Hotstrings/%StringToReplace%.txt
-FileRead,tempval,Hotstrings/%StringToReplace%.txt
+FileRead,tempval,Hotstmjyrings/%StringToReplace%.txt
 Hotstring("::" . StringToReplace,Func("Contents").Bind(tempval),"On")
 
 Gui,CreateHotStringGUI:Destroy
@@ -1099,7 +1134,7 @@ Loop {
 	if (Elapsed > 1000) {
 		return
 	}
-	ImageSearch,ImageX,ImageY,%LP_LPX1%, %LP_LPY1%,%LP_LPX2%, %LP_LPY2%,*10 LP.PNG
+	ImageSearch,ImageX,ImageY,%LP_LPX1%, %LP_LPY1%,%LP_LPX2%, %LP_LPY2%,*10 Image Search/LP.PNG
 	If !(ErrorLevel) {
 		X:=ImageX+LP_LPOffSetX
 		Y:=ImageY+LP_LPOffSetY
@@ -1381,7 +1416,7 @@ Loop, Parse, clip, %A_Space%
 
     if (temp = "")
         continue
-	
+
     if (NSN.HasKey(temp))
     {
         if (counter > 0)
