@@ -1,13 +1,16 @@
 #NoEnv
 #SingleInstance, Force
-#Include *i Personal Script.ahk
+SetWorkingDir, %A_ScriptDir%
+
+
+; ==================== THIS CODE WILL NOW RUN ====================
+
 SendMode, Input
 SetBatchLines, -1
-SetWorkingDir, %A_ScriptDir%
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=3.4
+global version:=4.0
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -117,6 +120,7 @@ LV_Add(,"Emulator: Target LP")
 LV_Add(,"Emulator: Short Pick")
 LV_Add(,"Emulator: Search Batch Number")
 LV_Add(,"Press Apply")
+LV_Add(,"Emulator: Skip")
 
 ;LoadHotkeys()
 ;LoadData()
@@ -190,166 +194,239 @@ Return
 
 
 ; =====  AUTOMATION FUNCTIONS ===================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
+AutoSkip:
+stop := false
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseGetPos, TempMouseX, TempMouseY
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+
+ImageClick("Emulator: Skip", "Skip Button", "Image Search\Skip.PNG", 1, 1000)
+
+; Return mouse to original position
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseClick, Left, %TempMouseX%, %TempMouseY%
+
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+return
 
 
+; ==================== AutoTargetLP ====================
 AutoTargetLP:
-stop:=false
-StartTimer:=A_TickCount
-If ((PickingMode = "DeCA") or (PickingMode = "3PL") or (PickingMode = "DeCA 2"))
-{
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 1000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,TLP_LPX1, TLP_LPY1,TLP_LPX2, TLP_LPY2,*10 Image Search/TargetLp.PNG
-	If !(ErrorLevel) {
-		X:=ImageX+TLP_LPOffSetX
-		Y:=ImageY+TLP_LPOffSetY
-		MouseClick,Left,%X%,%Y%
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
-}
+stop := false
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseGetPos, TempMouseX, TempMouseY
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+if (PickingMode != "DeCA" && PickingMode != "3PL" && PickingMode != "DeCA 2")
+	return
 
-if (LPStart=26){
-	LPStart:=a
+ImageClick("Emulator: Target LP", "Target LP", "Image Search\TargetLp.PNG", 1, 1000)
+
+tlp := Data["Emulator: Target LP"]
+if (LPStart = 26) {
+	LPStart := 1
 	LPNumCount++
 }
-CurrentLetter:=chr(LPStart + 96)
-CurrentLP=%TLP_Initial%%A_DD%%A_MM%%A_YYYY%%LPNumCount%%CurrentLetter%
-send, %CurrentLP%
-Send,{Enter}
-MOUSEMOVE,0,0
-LpStart++
+
+CurrentLetter := Chr(LPStart + 96)
+CurrentLP := tlp["Initial Target LP"] . A_DD . A_MM . A_YYYY . LPNumCount . CurrentLetter
+
+Send, %CurrentLP%
+Send, {Enter}
+; Return mouse to original position
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseClick, Left, %TempMouseX%, %TempMouseY%
+
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+LPStart++
+Return
+
+; ==================== AutoApply ====================
+AutoApply:
+if (ImageClick("Press Apply", "Apply Button", "Image Search\Apply.PNG", 1, 1000))
+	Sleep, 50
+else if (ErrorLevel = 2)
+	MsgBox, something is wrong
+Return
+
+; ==================== AutoShortPick ====================
+AutoShortPick:
+stop := false
+
+ImageClick("Emulator: Short Pick", "Short Pick", "Image Search\Short Pick.PNG", 1, 2000)
+ImageClick("Emulator: Short Pick", "Pick Qty",   "Image Search\Pick Qty.PNG", 2, 2000)
+
+Send, 0
+Send, {Enter}
+Return
+
+; ==================== AutoLP ====================
+AutoLP:
+stop := false
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseGetPos, TempMouseX, TempMouseY
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+If (PickingMode = "SPV" or PickingMode = "3PL")
+{
+	ImageClick("Emulator: License Plate", "Batch Number", "Image Search\Batch Number.PNG", 2, 1000)
+	Send, ^c
+
+	ImageClick("Emulator: License Plate", "License Plate", "Image Search\LP.PNG", 1, 1000)
+
+	Send, %A_Clipboard%
+	Send, {Enter}
 }
+else if (PickingMode = "DeCA 2")
+{
+	gosub, AutoSearchbatch
+	UseWorkLine(A_Clipboard)
+	Send, {Enter}
+}
+
+; Return mouse to original position
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseClick, Left, %TempMouseX%, %TempMouseY%
+
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+Return
+
+
+AutoSearchbatch:
+stop := false
+sb := Data["Emulator: Search Batch Number"]   ; Load section once
+
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseGetPos, TempMouseX, TempMouseY
+
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+
+; ==================== Search & Drag Batch Number ====================
+StartTimer := A_TickCount
+Loop
+{
+	Elapsed := A_TickCount - StartTimer
+	if (Elapsed > 1000)
+		return
+
+	ImageSearch, BatchX, BatchY, sb["Batch Number X1"], sb["Batch Number Y1"], sb["Batch Number X2"], sb["Batch Number Y2"], *10 Image Search\Batch Number.PNG
+
+	If (ErrorLevel = 0)
+	{
+		X  := BatchX + sb["Batch Number Offset X"]
+		Y  := BatchY + sb["Batch Number Offset Y"]
+		X2 := X + 250
+
+		MouseClickDrag, Left, %X%, %Y%, %X2%, %Y%
+		Send, ^c
+		break
+	}
+
+	if (stop) {
+		MsgBox, stopped
+		return
+	}
+	Sleep, 50
+}
+
+; ==================== Click Batch Filter ====================
+/*
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+
+ImageSearch, ImageX, ImageY, sb["Batch Filter X1"], sb["Batch Filter Y1"], sb["Batch Filter X2"], sb["Batch Filter Y2"], *10 Image Search\Batch Filter.PNG
+if (ErrorLevel = 0)
+{
+	X := ImageX + sb["Batch Filter Offset X"]
+	Y := ImageY + sb["Batch Filter Offset Y"]
+	MouseClick, Left, %X%, %Y%
+	Send, ^a
+	Send, %Clipboard%
+}
+
+Sleep, 50
+
+; Restore original coord mode
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+
+gosub, AutoApply
+
+; Return mouse to original position
+CoordMode, Pixel, Screen
+CoordMode, Mouse, Screen
+MouseClick, Left, %TempMouseX%, %TempMouseY%
+
+CoordMode, Mouse, Window
+CoordMode, Pixel, Window
+*/
 Return
 
 
 
+; Helper: Search for an image and click it with offset
+ImageClick(section, baseKey, imagePath, clicks := 1, timeout := 2000)
+{
+    global Data, stop
 
-AutoApply:
-ImageSearch,ImageX,ImageY,AP_ABX1, AP_ABY1,AP_ABX2, AP_ABY2,*100 Image Search/Apply.PNG
-if !(ErrorLevel){
-    X:=ImageX+AP_ABOffSetX
-    Y:=ImageY+AP_ABOffSetY
-    MouseClick, Left, X , Y
-    sleep,50
-}else if (ErrorLevel=2){
-    msgbox, something is wrong
-}else if (ErrorLevel=1){
-    ;tooltip, not found
-}
-return
+    coord := Data[section]
+    if (!IsObject(coord)) {
+        MsgBox, Section not found: %section%
+        return false
+    }
 
+    StartTimer := A_TickCount
 
+    Loop
+    {
+        Elapsed := A_TickCount - StartTimer
+        if (Elapsed > timeout)
+            return false
 
+        ; Use exact keys from your INI
+        x1 := coord[baseKey " X1"]
+        y1 := coord[baseKey " Y1"]
+        x2 := coord[baseKey " X2"]
+        y2 := coord[baseKey " Y2"]
+        offX := coord[baseKey " Offset X"]
+        offY := coord[baseKey " Offset Y"]
 
-AutoShortPick:
-stop:=false
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 2000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,SP_ShortPickX1, SP_ShortPickY1,SP_ShortPickX2, SP_ShortPickY2,*10 Image Search/Short Pick.PNG
-	If !(ErrorLevel) {
-		x:=ImageX+SP_ShortPickOffSetX
-		y:=ImageY+SP_ShortPickOffSetY
-		MouseClick,Left,%x%,%y%,1
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
-}
+        ImageSearch, ImageX, ImageY, %x1%, %y1%, %x2%, %y2%, *10 %imagePath%
 
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 2000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,SP_PickQtyX1, SP_PickQtyY1,SP_PickQtyX2, SP_PickQtyY2,*10 Image Search/Pick Qty.PNG
-	If !(ErrorLevel) {
-		X:=ImageX+SP_PickQtyOffSetX
-		Y:=ImageY+SP_PickQtyOffSetY
-		MouseClick,Left,%X%,%Y%,2
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
+        if (ErrorLevel = 0)
+        {
+            X := ImageX + offX
+            Y := ImageY + offY
+            MouseClick, Left, %X%, %Y%, %clicks%
+            return true
+        }
+
+        if (stop) {
+            MsgBox, stopped
+            return false
+        }
+        Sleep, 50
+    }
+    return false
 }
 
 
-Send,0
-Send,{Enter}
-
-return
-
-
-AutoLP:
-stop:=false
-If ((PickingMode = "SPV") or (PickingMode = "3PL")) {
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 1000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,LP_BatchX1, LP_BatchY1,LP_BatchX2, LP_BatchY2,*10 Image Search/Batch Number.PNG
-	If !(ErrorLevel) {
-		;tooltip, image not found
-		X:=ImageX+LP_BatchOffSetX
-		Y:=ImageY+LP_BatchOffSetY
-		MouseClick,Left,%X%,%Y%,2
-		break
-	}else
-	   ;msgbox, not found
-	if (stop){
-		msgbox, stopped
-		return
-	}
+SendHotstring(text) {
+    Send, %text%
 }
-
-Send, ^c
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 1000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,LP_LPX1, LP_LPY1,LP_LPX2, LP_LPY2,*10 Image Search/LP.PNG
-	If !(ErrorLevel) {
-		X:=ImageX+LP_LPOffSetX
-		Y:=ImageY+LP_LPOffSetY
-		MouseClick,Left,%X%,%Y%
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
-}
-
-Send, %A_CLipboard%
-Send,{Enter}
-
-} else if (PickingMode = "DeCA 2") {
-	gosub,AutoSearchbatch
-	UseWorkLine(A_Clipboard)
-	send, {Enter}
-}
-
-return
-
+Return
 
 
 DeleteHotstring:
@@ -449,65 +526,6 @@ WaitForExcelReady(xl, Timeout := 5000)
     return false
 }
 
-AutoSearchbatch:
-stop:=false
-CoordMode,Pixel,Screen
-CoordMode,Mouse,Screen
-MouseGetPos,TempMouseX,TempMouseY
-CoordMode,Mouse,Window
-CoordMode,Pixel,Window
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 1000) {
-		return
-	}
-	ImageSearch,BatchX,BatchY,SB_BNX1, SB_BNY1,SB_BNX2, SB_BNY2,*10 Image Search/Batch Number.PNG
-	If !(ErrorLevel) {
-		X:=BatchX+SB_BNOffSetX
-		Y:=BatchY+SB_BNOffSetY
-		X2:=X+250
-		MouseClickDrag,Left,%X%,%Y%,%X2%,Y
-		Send, ^c
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
-}
-
-CoordMode,Pixel,Screen
-CoordMode,Mouse,Screen
-ImageSearch,ImageX,ImageY,SB_BFX1, SB_BFY1,SB_BFX2, SB_BFY2,*10 Image Search/Batch Filter.PNG
-if !(ErrorLevel) {
-	X:=ImageX+SB_BFOffSetX
-	Y:=ImageY+SB_BFOffSetY
-	MouseClick,Left,%X%,%Y%
-	Send, ^a
-	Send, %Clipboard%
-}
-
-sleep,50
-
-CoordMode,Mouse,Window
-CoordMode,Pixel,Window
-gosub, AutoApply
-
-CoordMode,Pixel,Screen
-CoordMode,Mouse,Screen
-
-mouseclick,Left,%TempMouseX%,%TempMouseY%
-
-CoordMode,Mouse,Window
-CoordMode,Pixel,Window
-return
-
-
-
-
-
-
 
 
 
@@ -528,15 +546,23 @@ SetHotkeys(FunctionName,Hotkeys,Opt){
 Switch % FunctionName
 {
 Case "Emulator: License Plate":
+	if (Hotkeys != "ERROR")
 	Hotkey,%Hotkeys%,AutoLP,%Opt%
 Case "Emulator: Target LP":
+	if (Hotkeys != "ERROR")
 	Hotkey,~%Hotkeys%,AutoTargetLP,%Opt%
 Case "Emulator: Short Pick":
+	if (Hotkeys != "ERROR")
 	Hotkey,~%Hotkeys%,AutoShortPick,%Opt%
 Case "Emulator: Search Batch Number":
+	if (Hotkeys != "ERROR")
 	Hotkey,~%Hotkeys%,AutoSearchBatch,%Opt%
 Case "Press Apply":
+	if (Hotkeys != "ERROR")
 	Hotkey,~%Hotkeys%,AutoApply,%Opt%
+Case "Emulator: Skip":
+	if (Hotkeys != "ERROR")
+	Hotkey,~%Hotkeys%,AutoSkip,%Opt%
 }
 
 
@@ -881,8 +907,10 @@ If(RowText="Emulator: License Plate") {
 	CreateEditFunctionGUI(RowText,"Coordinate","Batch Number","Coordinate","Batch Filter")
 }else if (RowText="Press Apply"){
 	CreateEditFunctionGUI(RowText,"Coordinate","Apply Button","NA","NA")
+}else if (RowText="Emulator: Skip"){
+	CreateEditFunctionGUI(RowText,"Coordinate","Skip Button","NA","NA")
 }
-
+;CreateEditFunctionGUI(FuncName,Type1,Name1,Type2,Name2)
 
 
 return
@@ -1250,96 +1278,84 @@ Return hBitmap
 
 ; ===== LOAD DATA FUNCTIONS ===================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
 
+
 LoadData()
 {
-global LP_BatchX1, LP_BatchY1, LP_BatchX2, LP_BatchY2, LP_BatchOffSetX, LP_BatchOffSetY, LP_LPX1, LP_LPY1, LP_LPX2, LP_LPY2, LP_LPOffSetX, LP_LPOffSetY, TLP_Initial, TLP_LPX1, TLP_LPY1, TLP_LPX2, TLP_LPY2, TLP_LPOffSetX, TLP_LPOffSetY, SP_ShortPickX1, SP_ShortPickY1, SP_ShortPickX2, SP_ShortPickY2, SP_ShortPickOffSetX, SP_ShortPickOffSetY, SP_PickQtyX1, SP_PickQtyY1, SP_PickQtyX2, SP_PickQtyY2, SP_PickQtyOffSetX, SP_PickQtyOffSetY, SB_BNX1, SB_BNY1, SB_BNX2, SB_BNY2, SB_BNOffSetX, SB_BNOffSetY, SB_BFX1, SB_BFY1, SB_BFX2, SB_BFY2, SB_BFOffSetX, SB_BFOffSetY, AP_ABX1, AP_ABY1, AP_ABX2, AP_ABY2, AP_ABOffSetX, AP_ABOffSetY
-IniRead,LP_BatchX1,Data.Ini,Emulator: License Plate,Batch Number X1
-IniRead,LP_BatchY1,Data.Ini,Emulator: License Plate,Batch Number Y1
-IniRead,LP_BatchX2,Data.Ini,Emulator: License Plate,Batch Number X2
-IniRead,LP_BatchY2,Data.Ini,Emulator: License Plate,Batch Number Y2
-IniRead,LP_BatchOffSetX,Data.Ini,Emulator: License Plate,Batch Number Offset X
-IniRead,LP_BatchOffSetY,Data.Ini,Emulator: License Plate,Batch Number Offset Y
-IniRead,LP_LPX1,Data.Ini,Emulator: License Plate,License Plate X1
-IniRead,LP_LPY1,Data.Ini,Emulator: License Plate,License Plate Y1
-IniRead,LP_LPX2,Data.Ini,Emulator: License Plate,License Plate X2
-IniRead,LP_LPY2,Data.Ini,Emulator: License Plate,License Plate Y2
-IniRead,LP_LPOffSetX,Data.Ini,Emulator: License Plate,License Plate OffSet X
-IniRead,LP_LPOffSetY,Data.Ini,Emulator: License Plate,License Plate OffSet Y
+    global Data
+    Data := {}   ; Clear old data
 
+    ; Read the entire file as text
+    FileRead, IniContent, Data.Ini
 
-IniRead,TLP_Initial,Data.Ini,Emulator: Target LP,Initial Target LP
-IniRead,TLP_LPX1,Data.Ini,Emulator: Target LP,Target LP X1
-IniRead,TLP_LPY1,Data.Ini,Emulator: Target LP,Target LP Y1
-IniRead,TLP_LPX2,Data.Ini,Emulator: Target LP,Target LP X2
-IniRead,TLP_LPY2,Data.Ini,Emulator: Target LP,Target LP Y2
-IniRead,TLP_LPOffSetX,Data.Ini,Emulator: Target LP,Target LP OffSet X
-IniRead,TLP_LPOffSetY,Data.Ini,Emulator: Target LP,Target LP OffSet Y
+    if (ErrorLevel) {
+        MsgBox, 16, Error, Could not read Data.Ini!`nMake sure it is in the same folder as the script.
+        return
+    }
 
+    section := ""
 
-IniRead,SP_ShortPickX1,Data.Ini,Emulator: Short Pick,Short Pick X1
-IniRead,SP_ShortPickY1,Data.Ini,Emulator: Short Pick,Short Pick Y1
-IniRead,SP_ShortPickX2,Data.Ini,Emulator: Short Pick,Short Pick X2
-IniRead,SP_ShortPickY2,Data.Ini,Emulator: Short Pick,Short Pick Y2
-IniRead,SP_ShortPickOffSetX,Data.Ini,Emulator: Short Pick,Short Pick Offset X
-IniRead,SP_ShortPickOffSetY,Data.Ini,Emulator: Short Pick,Short Pick Offset Y
-IniRead,SP_PickQtyX1,Data.Ini,Emulator: Short Pick,Pick Qty X1
-IniRead,SP_PickQtyY1,Data.Ini,Emulator: Short Pick,Pick Qty Y1
-IniRead,SP_PickQtyX2,Data.Ini,Emulator: Short Pick,Pick Qty X2
-IniRead,SP_PickQtyY2,Data.Ini,Emulator: Short Pick,Pick Qty Y2
-IniRead,SP_PickQtyOffSetX,Data.Ini,Emulator: Short Pick,Pick Qty OffSet X
-IniRead,SP_PickQtyOffSetY,Data.Ini,Emulator: Short Pick,Pick Qty OffSet Y
-
-
-IniRead,SB_BNX1,Data.Ini,Emulator: Search Batch Number,Batch Number X1
-IniRead,SB_BNY1,Data.Ini,Emulator: Search Batch Number,Batch Number Y1
-IniRead,SB_BNX2,Data.Ini,Emulator: Search Batch Number,Batch Number X2
-IniRead,SB_BNY2,Data.Ini,Emulator: Search Batch Number,Batch Number Y2
-IniRead,SB_BNOffSetX,Data.Ini,Emulator: Search Batch Number,Batch Number Offset X
-IniRead,SB_BNOffSetY,Data.Ini,Emulator: Search Batch Number,Batch Number Offset Y
-IniRead,SB_BFX1,Data.Ini,Emulator: Search Batch Number,Batch Filter X1
-IniRead,SB_BFY1,Data.Ini,Emulator: Search Batch Number,Batch Filter Y1
-IniRead,SB_BFX2,Data.Ini,Emulator: Search Batch Number,Batch Filter X2
-IniRead,SB_BFY2,Data.Ini,Emulator: Search Batch Number,Batch Filter Y2
-IniRead,SB_BFOffSetX,Data.Ini,Emulator: Search Batch Number,Batch Filter OffSet X
-IniRead,SB_BFOffSetY,Data.Ini,Emulator: Search Batch Number,Batch Filter OffSet Y
-
-
-IniRead,AP_ABX1,Data.Ini,Press Apply,Apply Button X1
-IniRead,AP_ABY1,Data.Ini,Press Apply,Apply Button Y1
-IniRead,AP_ABX2,Data.Ini,Press Apply,Apply Button X2
-IniRead,AP_ABY2,Data.Ini,Press Apply,Apply Button Y2
-IniRead,AP_ABOffSetX,Data.Ini,Press Apply,Apply Button OffSet X
-IniRead,AP_ABOffSetY,Data.Ini,Press Apply,Apply Button OffSet Y
-
-
-IniRead,Temp,Data.Ini,Hotstrings,Strings
-Loop, Files, Hotstrings/*.txt
+	TotalLines := 0
+	Loop, Parse, IniContent, `n, `r
 	{
-		StringReplace, FileNameNoExt, A_LoopFileName, % "." . A_LoopFileExt
-		FileRead,Contents,Hotstrings/%A_LoopFileName%
-		Gui,ListView,HotstringLV
-		LV_ADD(,FileNameNoExt,Contents)
-		Hotstring("::" . FileNameNoExt,Func("Contents").Bind(Contents),"On")
+		SetLoad(40, "Reading Data.Ini (" . TotalLines . ")...")
+		sleep,10
+		TotalLines++
 	}
 
+    Loop, Parse, IniContent, `n, `r
+    {
+        line := Trim(A_LoopField)
+		SetLoad(40, "Importing Data.Ini (" . A_Index . ")...")
+		sleep,10
+        if (line = "" || SubStr(line, 1, 1) = ";")
+            continue
+
+        if (SubStr(line, 1, 1) = "[")  ; Section header
+        {
+            section := Trim(SubStr(line, 2, StrLen(line)-2))
+            Data[section] := {}
+            continue
+        }
+
+        ; Key=Value line
+        if (InStr(line, "="))
+        {
+            keyPos := InStr(line, "=")
+            key   := Trim(SubStr(line, 1, keyPos-1))
+            value := Trim(SubStr(line, keyPos+1))
+
+            if (section != "" && key != "")
+                Data[section][key] := value
+        }
+    }
+
+    ; ==================== Hotstrings ====================
+    Gui, ListView, HotstringLV
+    Loop, Files, Hotstrings/*.txt
+    {
+        FileNameNoExt := RegExReplace(A_LoopFileName, "\.[^\.]+$")
+        FileRead, Contents, %A_LoopFileFullPath%
+        LV_Add(, FileNameNoExt, Contents)
+        Hotstring("::" . FileNameNoExt, Func("SendHotstring").Bind(Contents), "On")
+    }
 }
 
-
-return
 
 LoadHotkeys(){
- Gui,Main:Default
- IniRead,TempHotkey,Data.Ini,%FuncName%,Hotkey
+	Gui,Main:Default
+	IniRead,TempHotkey,Data.Ini,%FuncName%,Hotkey
+	Gui,Listview,FunctionLV
+	TotalItems := LV_GetCount()
 
- Gui,Listview,FunctionLV
- loop % LV_GetCount()
-{
-  LV_GetText(Func,A_Index)
-  IniRead,TempHotkey,Data.Ini,%Func%,Hotkey
-  LV_Modify(A_Index,,,TempHotkey)
-  SetHotkeys(Func,TempHotkey,"On")
-}
-
+	loop % LV_GetCount()
+	{
+		SetLoad(25, "Importing Hotkeys (" . A_Index . ")...")
+		sleep,10
+		LV_GetText(Func,A_Index)
+		IniRead,TempHotkey,Data.Ini,%Func%,Hotkey
+		LV_Modify(A_Index,,,TempHotkey)
+	SetHotkeys(Func,TempHotkey,"On")
+	}
 
 }
 
@@ -1612,11 +1628,6 @@ Reload
 return
 
 
-;F1::SendInput, ^v
-;F2::SendInput, ^c
-;F3::SendInput, ^a
-
-
 
 ^Tab::
 modes := ["DeCA 2", "3PL", "SPV"]
@@ -1663,4 +1674,4 @@ return
 
 
 ; ===== END OF HOTKEY FUNCTIONS ===================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
-
+#Include *i Personal Script.ahk
