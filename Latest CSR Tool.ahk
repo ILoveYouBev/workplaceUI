@@ -198,7 +198,7 @@ Gui,Main: Add, StatusBar,, Keith's Automation v%version%
 Gui,Main: Font, s14 Bold
 Gui,Main: -Caption
 SetLoad(100, "Done!")
-Sleep, 100
+Sleep, 500
 
 ; Fade out
 Loop 20
