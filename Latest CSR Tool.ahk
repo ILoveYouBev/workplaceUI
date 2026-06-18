@@ -10,7 +10,7 @@ SetBatchLines, -1
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=4.1
+global version:=4.2
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -342,6 +342,7 @@ If (PickingMode = "SPV" or PickingMode = "3PL")
 else if (PickingMode = "DeCA 2")
 {
 	gosub, AutoSearchbatch
+	;sleep,10
 	UseWorkLine(A_Clipboard)
 	Send, {Enter}
 }
@@ -392,8 +393,9 @@ Loop
 		MsgBox, stopped
 		return
 	}
-	Sleep, 50
+
 }
+Sleep, 50
 
 ; ==================== Click Batch Filter ====================
 /*
@@ -1187,12 +1189,14 @@ if (BatchLP.HasKey(CurrentBatch))
 {
     LP := BatchLP[CurrentBatch]
     ClickIntoLP()
+	;sleep,10
     SendInput {Raw}%LP%
 }
 else
 {
     LP := TransformBatchToDeCALP(CurrentBatch)
     ClickIntoLP()
+	;sleep,10
     SendInput {Raw}%LP%
 }
 return
@@ -1213,26 +1217,7 @@ TransformBatchToDeCALP(input)
 
 ClickIntoLP()
 {
-    global LP_LPX1, LP_LPY1, LP_LPX2, LP_LPY2
-    global LP_LPOffSetX, LP_LPOffSetY, stop
-StartTimer:=A_TickCount
-Loop {
-	Elapsed:=A_TickCount - StartTimer
-	if (Elapsed > 1000) {
-		return
-	}
-	ImageSearch,ImageX,ImageY,%LP_LPX1%, %LP_LPY1%,%LP_LPX2%, %LP_LPY2%,*10 Image Search/LP.PNG
-	If !(ErrorLevel) {
-		X:=ImageX+LP_LPOffSetX
-		Y:=ImageY+LP_LPOffSetY
-		MouseClick,Left,%X%,%Y%
-		break
-	}
-	if (stop){
-		msgbox, stopped
-		return
-	}
-}
+ImageClick("Emulator: License Plate", "License Plate", A_ScriptDir "\Image Search\LP.PNG", 1, 1500)
 }
 
 
