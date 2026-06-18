@@ -1294,14 +1294,6 @@ LoadData()
 
     section := ""
 
-	TotalLines := 0
-	Loop, Parse, IniContent, `n, `r
-	{
-		SetLoad(40, "Reading Data.Ini (" . TotalLines . ")...")
-		sleep,10
-		TotalLines++
-	}
-
     Loop, Parse, IniContent, `n, `r
     {
         line := Trim(A_LoopField)
