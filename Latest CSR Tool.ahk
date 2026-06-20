@@ -10,7 +10,7 @@ SetBatchLines, -1
 CoordMode,Pixel,Window
 CoordMode,Mouse,Window
 CoordMode,ToolTip,Screen
-global version:=4.2
+global version:=4.3
 global PickingMode := "SPV"
 global NSN := {}
 global LPColumnIndex
@@ -481,7 +481,11 @@ ImageClick(section, baseKey, imagePath, clicks := 1, timeout := 2000)
 
 
 SendHotstring(text) {
-    Send, %text%
+    ; Normalize ALL line endings to pure `n` before sending to Contents
+    text := StrReplace(text, "`r`n", "`n")
+    text := StrReplace(text, "`r", "`n")
+
+    Contents(text)
 }
 Return
 
@@ -506,62 +510,53 @@ return
 
 
 
-Contents(a){
-;Clipboard:=a
-if WinActive("ahk_exe EXCEL.EXE")
-{
-	xl := ComObjActive("Excel.Application")
+Contents(a) {
+    if WinActive("ahk_exe EXCEL.EXE") {
+        xl := ComObjActive("Excel.Application")
+        Send {Esc}                    ; exit edit mode safely
+        if !WaitForExcelReady(xl)
+            return
 
-	; force Excel out of edit mode (important)
-	Send {Esc}
-	if !WaitForExcelReady(xl)
-		return
-	cell := xl.ActiveCell
+        cell := xl.ActiveCell
+        oldValue := cell.Value ? cell.Value : ""
 
-	oldValue := cell.Value
-	newText := "`n" . a   ; text you want to add
+        ; === CRITICAL PART: Clean line endings ===
+        textToAdd := StrReplace(a, "`r`n", "`n")
+        textToAdd := StrReplace(textToAdd, "`r", "`n")
 
-	if (oldValue = "")
-		newText := a
-	else
-		newText := "`n" . a
+        if (oldValue = "")
+            finalText := textToAdd
+        else
+            finalText := oldValue . "`n" . textToAdd
 
-	cell.Value := oldValue . newText
+        ; Write to cell
+        cell.Value := finalText
 
-	/*
-	Loop 100	; up to 1sec
-	{
-		try
-		{
-			if (cell.Value = newValue)
-				break
-		}
-		catch
-		{
-		}
+        Sleep 40
 
-		Sleep, 10
-	}
-	*/
-	sleep,50
+        ; Make sure Excel shows the line breaks
+        cell.WrapText := True
 
-	Cell.Font.Bold := True
-	; calculate positions for formatting
-	startPos := StrLen(oldValue) + 1
-	len := StrLen(newText)
+        ; Bold the whole cell (or just new part)
+        cell.Font.Bold := True
 
-	; format ONLY new text
-	charRange := cell.Characters(startPos, len)
-	if InStr(a, "SHORT SHELF LIFE ITEM")
-		charRange.Font.ColorIndex := 3
+        ; Color only the new text if it contains the keyword
+        if InStr(a, "SHORT SHELF LIFE ITEM") {
+            startPos := StrLen(oldValue) + (oldValue ? 2 : 1)  ; +2 for the added `n`
+            charRange := cell.Characters(startPos, StrLen(textToAdd))
+            charRange.Font.ColorIndex := 3
+        }
 
-}else{ ;if excel is not active
-	SendInput % a
+    } else {
+        SendInput % a
+    }
+    return
 }
 
+::testmulti::
+    tempval := "ITEM AT ORDER WITH SUPPLIER (PENDING ETA)`nLine 2 here`nLine 3 - SHORT SHELF LIFE ITEM"
+    Contents(tempval)
 return
-}
-
 
 WaitForExcelReady(xl, Timeout := 5000)
 {
