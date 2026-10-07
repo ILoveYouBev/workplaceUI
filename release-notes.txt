@@ -1,0 +1,7 @@
+Added secure local login with User and Admin accounts, encrypted account storage, and administrator controls for managing users and access.
+
+Added EXE distribution and required update checks. Admins can compile and publish new versions directly from the Admin tab.
+
+Improved Excel fill-rate formatting and automatic NIS calculations.
+
+First installation requires administrator account setup. Existing v4.3 users must install the new EXE package once.
